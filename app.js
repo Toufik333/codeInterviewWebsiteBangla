@@ -16,6 +16,7 @@
   let userMenuOpen = false;
   let dashboardMode = "tracks"; // 'tracks' | 'grid'
   let selectedTrackFilter = "all";
+  let activeChapterTab = "concepts"; // 'concepts' | 'problems'
   let dbStatus = { checked: false, connected: false, mongoConfigured: false };
   let dbBannerDismissed = false;
 
@@ -549,6 +550,138 @@
     return `<div class="chapters-grid">${cardsHTML}</div>`;
   }
 
+  // ── Helper: Escape HTML ──────────────────────────────────
+  function escapeHTML(str) {
+    if (!str) return "";
+    return str
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#039;");
+  }
+
+  // ── Helper: Render Coding Problems List ───────────────────
+  function renderProblemsHTML(problems) {
+    if (!problems || problems.length === 0) {
+      return `
+        <div class="empty-state-box" style="text-align: center; padding: 3rem 1rem; color: var(--fg-muted); background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-xl);">
+          <div style="font-size: 2.5rem; margin-bottom: 0.5rem;">📝</div>
+          <div style="font-size: 1.15rem; color: var(--fg-primary); font-weight: 600; margin-bottom: 0.35rem;">কোনো কোডিং প্রবলেম পাওয়া যায়নি</div>
+          <p style="max-width: 480px; margin: 0 auto; font-size: 0.9rem; line-height: 1.5;">এই চ্যাপ্টারের জন্য শীঘ্রই আরও ইন্টারভিউ প্রবলেমস যোগ করা হচ্ছে।</p>
+        </div>
+      `;
+    }
+
+    return `
+      <div class="problems-list">
+        ${problems.map((prob, i) => {
+          const diffClass = (prob.difficulty || "medium").toLowerCase();
+
+          let examplesHTML = "";
+          if (prob.examples && prob.examples.length > 0) {
+            examplesHTML = `
+              <div class="problem-examples-box">
+                ${prob.examples.map((ex, idx) => `
+                  <div class="example-entry">
+                    <div class="example-row">
+                      <span class="example-label">Example ${idx + 1}:</span>
+                      <span class="example-val">${escapeHTML(ex.input)}</span>
+                    </div>
+                    <div class="example-row">
+                      <span class="example-label">Output:</span>
+                      <span class="example-val">${escapeHTML(ex.output)}</span>
+                    </div>
+                    ${ex.explanation ? `<div style="color: var(--fg-dim); font-size: 0.84rem; margin-top: 0.25rem;">💡 <em>${ex.explanation}</em></div>` : ""}
+                  </div>
+                `).join("")}
+              </div>
+            `;
+          }
+
+          let hintsHTML = "";
+          if (prob.hints && prob.hints.length > 0) {
+            hintsHTML = `
+              <div class="hints-container">
+                ${prob.hints.map((hint, hIdx) => `
+                  <details class="hint-details">
+                    <summary class="hint-summary">💡 প্রগ্রেসিভ হিন্ট ${hIdx + 1} (ক্লিক করে উন্মোচন করুন)</summary>
+                    <div class="hint-body">${hint}</div>
+                  </details>
+                `).join("")}
+              </div>
+            `;
+          }
+
+          let approachHTML = "";
+          if (prob.approach) {
+            approachHTML = `
+              <div class="approach-card">
+                <div class="approach-title">🧠 সর্বোত্তম সমাধান ও অ্যালগরিদম কৌশল</div>
+                <div class="approach-text">${prob.approach}</div>
+              </div>
+            `;
+          }
+
+          let solutionsHTML = "";
+          if (prob.solutions && prob.solutions.length > 0) {
+            solutionsHTML = prob.solutions.map((sol) => `
+              <div class="code-solution-box">
+                <div class="code-header-bar">
+                  <span class="code-lang-tag">${sol.language || "Code"} Solution</span>
+                  <button class="btn-copy-code" data-code="${encodeURIComponent(sol.code)}">
+                    📋 Copy Code
+                  </button>
+                </div>
+                <pre class="code-pre"><code>${escapeHTML(sol.code)}</code></pre>
+                ${sol.explanation ? `<div class="solution-note">ℹ️ ${sol.explanation}</div>` : ""}
+              </div>
+            `).join("");
+          }
+
+          let complexityHTML = "";
+          if (prob.complexity) {
+            complexityHTML = `
+              <div class="complexity-footer">
+                ${prob.complexity.time ? `
+                  <div class="complexity-item">
+                    <span class="complexity-label">Time Complexity:</span>
+                    <span class="complexity-val">${prob.complexity.time}</span>
+                  </div>
+                ` : ""}
+                ${prob.complexity.space ? `
+                  <div class="complexity-item">
+                    <span class="complexity-label">Space Complexity:</span>
+                    <span class="complexity-val">${prob.complexity.space}</span>
+                  </div>
+                ` : ""}
+              </div>
+            `;
+          }
+
+          return `
+            <div class="problem-card" style="animation-delay: ${i * 0.06}s">
+              <div class="problem-header">
+                <div class="problem-title-area">
+                  <span class="problem-id-pill">PROB ${prob.id}</span>
+                  <span class="problem-title-main">${prob.title}</span>
+                  <span class="problem-title-bangla">${prob.banglaTitle ? `(${prob.banglaTitle})` : ""}</span>
+                </div>
+                <span class="difficulty-pill difficulty-${diffClass}">${prob.difficulty}</span>
+              </div>
+              <div class="problem-desc">${prob.description}</div>
+              ${examplesHTML}
+              ${hintsHTML}
+              ${approachHTML}
+              ${solutionsHTML}
+              ${complexityHTML}
+            </div>
+          `;
+        }).join("")}
+      </div>
+    `;
+  }
+
   // ── Content View ─────────────────────────────────────────
   function renderContentView(chId) {
     const ch = CHAPTERS.find((c) => c.id === chId);
@@ -556,7 +689,9 @@
 
     const chProg = progress.chapters[ch.id] || {};
     const track = TRACKS.find((t) => t.chapters.includes(ch.id));
+    const problems = ch.problems || [];
 
+    // Concepts Section
     let conceptsHTML = ch.concepts.map((concept, i) => {
       let bigOHTML = "";
       if (concept.bigO) {
@@ -595,6 +730,8 @@
       `;
     }).join("");
 
+    const activeTab = activeChapterTab || "concepts";
+
     return `
       <div class="content-header">
         ${
@@ -605,12 +742,49 @@
         <h1 class="content-title">${ch.icon} ${ch.title}</h1>
         <p class="content-subtitle">${ch.description}</p>
       </div>
-      <div class="concepts-list">${conceptsHTML}</div>
-      <div class="content-actions">
-        <button class="btn-primary" id="btnStartQuiz" data-chapter="${ch.id}">
-          ${chProg.quizCompleted ? "Retake Quiz" : "Take Chapter Quiz"} (${ch.quiz.length} Questions) →
+
+      <!-- Segmented Navigation Bar -->
+      <div class="chapter-segmented-nav">
+        <button class="segment-btn ${activeTab === "concepts" ? "active" : ""}" data-tab="concepts">
+          <span>📘 মূল ধারণা ও তত্ত্ব</span>
+          <span class="segment-count-badge">${ch.concepts.length}</span>
+        </button>
+        <button class="segment-btn ${activeTab === "problems" ? "active" : ""}" data-tab="problems">
+          <span>💻 ইন্টারভিউ সমস্যা ও সমাধান</span>
+          <span class="segment-count-badge">${problems.length}</span>
         </button>
       </div>
+
+      <!-- Main Body per Selected Segment -->
+      ${
+        activeTab === "concepts"
+          ? `
+            <div class="concepts-list">${conceptsHTML}</div>
+            <div class="content-actions" style="display: flex; gap: 1rem; justify-content: flex-end; flex-wrap: wrap;">
+              ${
+                problems.length > 0
+                  ? `<button class="btn-secondary" id="btnGoToProblems" style="padding: 0.75rem 1.4rem;">
+                      অনুশীলন প্রবলেমস দেখুন (${problems.length}) →
+                    </button>`
+                  : ""
+              }
+              <button class="btn-primary" id="btnStartQuiz" data-chapter="${ch.id}">
+                ${chProg.quizCompleted ? "Retake Quiz" : "Take Chapter Quiz"} (${ch.quiz.length} Questions) →
+              </button>
+            </div>
+          `
+          : `
+            ${renderProblemsHTML(problems)}
+            <div class="content-actions" style="display: flex; gap: 1rem; justify-content: flex-end; flex-wrap: wrap; margin-top: 2.5rem;">
+              <button class="btn-secondary" id="btnGoToConcepts" style="padding: 0.75rem 1.4rem;">
+                ← মূল ধারণাসমূহ পড়ুন
+              </button>
+              <button class="btn-primary" id="btnStartQuiz" data-chapter="${ch.id}">
+                ${chProg.quizCompleted ? "Retake Quiz" : "Take Chapter Quiz"} (${ch.quiz.length} Questions) →
+              </button>
+            </div>
+          `
+      }
     `;
   }
 
@@ -913,6 +1087,10 @@
     currentQuizAnswers = [];
     quizSubmitted = false;
 
+    if (chapterId && chapterId !== progress.activeChapter) {
+      activeChapterTab = "concepts";
+    }
+
     if (chapterId) progress.activeChapter = chapterId;
     progress.activeView = view;
     Storage.save(progress);
@@ -1027,6 +1205,51 @@
         if (chId) {
           Storage.markContentRead(progress, chId);
           navigateTo("content", chId);
+        }
+      });
+    });
+
+    // Segmented navigation tabs (Concepts vs Problems)
+    document.querySelectorAll(".segment-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        activeChapterTab = btn.dataset.tab;
+        render();
+      });
+    });
+
+    // Jump to Problems button
+    const btnGoToProblems = document.getElementById("btnGoToProblems");
+    if (btnGoToProblems) {
+      btnGoToProblems.addEventListener("click", () => {
+        activeChapterTab = "problems";
+        render();
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      });
+    }
+
+    // Jump to Concepts button
+    const btnGoToConcepts = document.getElementById("btnGoToConcepts");
+    if (btnGoToConcepts) {
+      btnGoToConcepts.addEventListener("click", () => {
+        activeChapterTab = "concepts";
+        render();
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      });
+    }
+
+    // Copy Code button
+    document.querySelectorAll(".btn-copy-code").forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const rawCode = decodeURIComponent(btn.dataset.code || "");
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(rawCode).then(() => {
+            showToast("কোড ক্লিপবোর্ডে কপি করা হয়েছে! 📋", "success");
+          }).catch(() => {
+            showToast("ক্লিপবোর্ডে কপি করা সম্ভব হয়নি।", "warning");
+          });
+        } else {
+          showToast("ক্লিপবোর্ড এপিআই সাপোর্ট করছে না।", "warning");
         }
       });
     });
