@@ -91,38 +91,54 @@
 
   // ── Router / Main Render ─────────────────────────────────
   function render() {
-    const view = progress.activeView || "dashboard";
-    const chId = progress.activeChapter;
+    const appContainer = document.getElementById("app");
+    if (!appContainer) return;
 
-    let pageHTML = "";
+    try {
+      const view = progress.activeView || "dashboard";
+      const chId = progress.activeChapter;
 
-    switch (view) {
-      case "content":
-        pageHTML = renderContentView(chId);
-        break;
-      case "quiz":
-        pageHTML = renderQuizView(chId);
-        break;
-      case "results":
-        pageHTML = renderResultsView(chId);
-        break;
-      default:
-        pageHTML = renderDashboard();
-    }
+      let pageHTML = "";
 
-    app.innerHTML = `
-      <div class="sidebar-overlay" id="sidebarOverlay"></div>
-      ${renderSidebar()}
-      <div class="main-content">
-        ${renderTopBar(view, chId)}
-        <div class="page-container">
-          ${pageHTML}
+      switch (view) {
+        case "content":
+          pageHTML = renderContentView(chId);
+          break;
+        case "quiz":
+          pageHTML = renderQuizView(chId);
+          break;
+        case "results":
+          pageHTML = renderResultsView(chId);
+          break;
+        default:
+          pageHTML = renderDashboard();
+      }
+
+      appContainer.innerHTML = `
+        <div class="sidebar-overlay" id="sidebarOverlay"></div>
+        ${renderSidebar()}
+        <div class="main-content">
+          ${renderTopBar(view, chId)}
+          <div class="page-container">
+            ${pageHTML}
+          </div>
         </div>
-      </div>
-    `;
+      `;
 
-    attachEvents();
-    applyStaggerAnimation();
+      attachEvents();
+      applyStaggerAnimation();
+    } catch (err) {
+      console.error("Rendering error:", err);
+      appContainer.innerHTML = `
+        <div style="min-height: 80vh; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 2rem; color: #FAFAFA; text-align: center;">
+          <h2 style="color: #EF4444; font-size: 1.5rem; margin-bottom: 0.5rem;">Rendering Notice</h2>
+          <p style="color: #A1A1AA; max-width: 500px; margin-bottom: 1.5rem;">${err.message || "An error occurred while rendering the page."}</p>
+          <button onclick="localStorage.clear(); window.location.reload();" style="padding: 0.6rem 1.25rem; background: #F59E0B; color: #0A0A0F; font-weight: 600; border: none; border-radius: 8px; cursor: pointer;">
+            Reset Cache & Reload
+          </button>
+        </div>
+      `;
+    }
   }
 
   // ── Sidebar ──────────────────────────────────────────────
@@ -1376,5 +1392,9 @@
   }
 
   // ── Boot ─────────────────────────────────────────────────
-  document.addEventListener("DOMContentLoaded", init);
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", init);
+  } else {
+    init();
+  }
 })();

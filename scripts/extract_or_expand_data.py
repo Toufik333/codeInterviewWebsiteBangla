@@ -31,8 +31,8 @@ if sys.platform == "win32" and hasattr(sys.stdout, "reconfigure"):
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 DATA_DIR = BASE_DIR / "data"
-CHAPTERS_DIR = DATA_DIR / "chapters"
-OUTPUT_DATA_JS = BASE_DIR / "data.js"
+PUBLIC_DIR = BASE_DIR / "public"
+OUTPUT_DATA_JS = PUBLIC_DIR / "data.js"
 
 
 def read_file(path: Path) -> str:
@@ -112,7 +112,7 @@ if (typeof module !== "undefined" && module.exports) {{
 }}
 """
     write_file(OUTPUT_DATA_JS, bundle_header)
-    print(f"✅ Successfully bundled {len(chapter_files)} chapters into {OUTPUT_DATA_JS} ({len(bundle_header)} bytes)")
+    print(f"✅ Successfully bundled {len(chapter_files)} chapters into {OUTPUT_DATA_JS}")
 
 
 def validate_data():

@@ -8,11 +8,21 @@ const PORT = process.env.PORT || 3000;
 // Mount API routes
 app.use(apiApp);
 
-// Serve static frontend files from repository root
+const fs = require("fs");
+
+// Serve static frontend files (prioritizing public/ for Vercel parity)
+const publicDir = path.join(__dirname, "public");
+if (fs.existsSync(publicDir)) {
+  app.use(express.static(publicDir));
+}
 app.use(express.static(path.join(__dirname)));
 
 // Fallback to index.html for SPA client-side routes
 app.get("*", (req, res) => {
+  const publicIndex = path.join(publicDir, "index.html");
+  if (fs.existsSync(publicIndex)) {
+    return res.sendFile(publicIndex);
+  }
   res.sendFile(path.join(__dirname, "index.html"));
 });
 
